@@ -9,10 +9,10 @@ import {
   Apple, 
   ArrowUpRight,
   Printer,
-  Info,
   UtensilsCrossed,
   ScrollText,
-  Leaf
+  Leaf,
+  Quote
 } from 'lucide-react';
 import { Recipe, GeminiEnhancement } from '../types';
 import { getRecipeEnhancement } from '../services/geminiService';
@@ -72,19 +72,9 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose }) => {
         <div className="flex-grow overflow-y-auto custom-scrollbar bg-malanga-white/50">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
             
-            {/* Contenido Izquierdo: Ficha Técnica */}
-            <div className="lg:col-span-8 p-10 sm:p-16 space-y-16 border-r border-malanga-green/5">
+            {/* Contenido Izquierdo: Ficha Técnica (Insumos y Descripción de la Carta) */}
+            <div className="lg:col-span-7 p-10 sm:p-16 space-y-16 border-r border-malanga-green/5">
               
-              {recipe.descripcion && (
-                <div className="bg-malanga-pinkSoft p-10 rounded-[2.5rem] border border-malanga-green/5 shadow-inner">
-                  <div className="flex items-center gap-3 mb-4">
-                    <ScrollText className="w-5 h-5 text-malanga-green" />
-                    <p className="text-malanga-green text-[10px] font-black uppercase tracking-[0.3em]">Nota de la Carta</p>
-                  </div>
-                  <p className="text-malanga-greenDark text-2xl italic font-medium leading-relaxed">"{recipe.descripcion}"</p>
-                </div>
-              )}
-
               {/* Insumos */}
               <section>
                 <div className="flex items-center gap-4 mb-8">
@@ -113,32 +103,36 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose }) => {
                 </div>
               </section>
 
-              {/* Elaboración */}
+              {/* Descripción de la Carta (Ahora en el panel principal izquierdo) */}
               <section>
                 <div className="flex items-center gap-4 mb-8">
-                  <ChefHat className="w-6 h-6 text-malanga-green" />
-                  <h3 className="text-2xl font-black text-malanga-greenDark uppercase tracking-tighter">Proceso de Elaboración</h3>
+                  <ScrollText className="w-6 h-6 text-malanga-green" />
+                  <h3 className="text-2xl font-black text-malanga-greenDark uppercase tracking-tighter">Descripción de la Carta</h3>
                 </div>
-                <div className="bg-malanga-white p-12 rounded-[3rem] border border-malanga-green/10 text-malanga-text leading-relaxed text-lg whitespace-pre-wrap italic font-medium shadow-sm">
-                  {recipe.instrucciones}
+                <div className="bg-malanga-white p-12 rounded-[3rem] border border-malanga-green/10 shadow-sm relative group">
+                  <Quote className="absolute top-8 left-8 w-12 h-12 text-malanga-pink opacity-30 group-hover:opacity-50 transition-opacity" />
+                  <p className="text-malanga-greenDark text-3xl italic font-medium leading-relaxed relative z-10 pt-6 px-4">
+                    {recipe.descripcion ? `"${recipe.descripcion}"` : "Sin descripción comercial definida."}
+                  </p>
                 </div>
               </section>
             </div>
 
-            {/* Contenido Derecho: IA Malanga */}
-            <div className="lg:col-span-4 bg-malanga-pinkSoft/30 p-10 sm:p-16 space-y-10">
-              {!enhancement ? (
-                <div className="h-full flex flex-col items-center justify-center text-center space-y-10">
-                  <div className="w-28 h-28 bg-malanga-green text-malanga-white rounded-full flex items-center justify-center shadow-2xl relative">
-                    <Sparkles className="w-12 h-12" />
-                    <div className="absolute inset-0 rounded-full border-2 border-malanga-green border-dashed animate-spin-slow"></div>
-                  </div>
-                  <div>
-                    <h3 className="text-3xl font-black text-malanga-greenDark uppercase tracking-tighter mb-4">Gemini Gastronomy</h3>
-                    <p className="text-malanga-text/60 text-sm leading-relaxed max-w-xs mx-auto italic">
-                      Potenciamos la técnica tradicional con inteligencia de vanguardia.
-                    </p>
-                  </div>
+            {/* Contenido Derecho: Proceso de Elaboración e IA */}
+            <div className="lg:col-span-5 bg-malanga-pinkSoft/30 p-10 sm:p-16 space-y-10">
+              
+              {/* Proceso de Elaboración (Ahora en el panel derecho superior) */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-3">
+                  <ChefHat className="w-6 h-6 text-malanga-green" />
+                  <h3 className="text-xl font-black text-malanga-greenDark uppercase tracking-tighter">Elaboración Técnica</h3>
+                </div>
+                
+                <div className="bg-malanga-white p-8 rounded-[2.5rem] border border-malanga-green/10 text-malanga-text leading-relaxed text-base whitespace-pre-wrap italic font-medium shadow-sm max-h-[300px] overflow-y-auto custom-scrollbar">
+                  {recipe.instrucciones}
+                </div>
+
+                {!enhancement && (
                   <button
                     onClick={handleEnhance}
                     disabled={isEnhancing}
@@ -149,32 +143,35 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose }) => {
                     ) : (
                       <>
                         <Sparkles className="w-6 h-6" />
-                        MEJORAR PLATO
+                        POTENCIAR CON GEMINI IA
                       </>
                     )}
                   </button>
-                </div>
-              ) : (
-                <div className="space-y-10 animate-fade-in">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xl font-black text-malanga-green uppercase tracking-tighter flex items-center gap-3">
-                      <Sparkles className="w-6 h-6" />
-                      Optimización AI
+                )}
+              </div>
+
+              {/* Resultados de la IA (Solo si se ha generado) */}
+              {enhancement && (
+                <div className="space-y-8 animate-fade-in">
+                  <div className="flex items-center justify-between border-t border-malanga-green/10 pt-8">
+                    <h3 className="text-lg font-black text-malanga-green uppercase tracking-tighter flex items-center gap-3">
+                      <Sparkles className="w-5 h-5" />
+                      Sugerencias Malanga
                     </h3>
                     <button 
                       onClick={() => setEnhancement(null)} 
-                      className="text-[10px] text-malanga-green font-black uppercase tracking-widest bg-malanga-white px-3 py-1.5 rounded-full border border-malanga-green/20 shadow-sm"
+                      className="text-[10px] text-malanga-green font-black uppercase tracking-widest bg-malanga-white px-3 py-1.5 rounded-full border border-malanga-green/20 shadow-sm hover:bg-malanga-pinkSoft transition-colors"
                     >
-                      Reset
+                      Refrescar
                     </button>
                   </div>
 
-                  <div className="space-y-6">
+                  <div className="grid grid-cols-1 gap-6">
                     {[
-                      { title: 'Toque de Vanguardia', icon: ArrowUpRight, content: enhancement.variacionGourmet },
-                      { title: 'Maridaje Brunch', icon: Wine, content: enhancement.maridajeSugerido },
-                      { title: 'Tip del Chef', icon: Lightbulb, content: enhancement.tipPro },
-                      { title: 'Perfil Nutricional', icon: Apple, content: enhancement.valorNutricional }
+                      { title: 'Elevación Gourmet', icon: ArrowUpRight, content: enhancement.variacionGourmet },
+                      { title: 'Maridaje Sugerido', icon: Wine, content: enhancement.maridajeSugerido },
+                      { title: 'Secreto del Chef', icon: Lightbulb, content: enhancement.tipPro },
+                      { title: 'Nutrición Malanga', icon: Apple, content: enhancement.valorNutricional }
                     ].map((card, i) => (
                       <div key={i} className="bg-malanga-white border border-malanga-green/5 p-8 rounded-[2rem] shadow-sm hover:shadow-md transition-shadow">
                         <div className="flex items-center gap-3 mb-4">
@@ -187,13 +184,14 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose }) => {
                       </div>
                     ))}
                   </div>
-
-                  <div className="pt-10 flex items-center gap-3 text-[10px] text-malanga-green/40 justify-center border-t border-malanga-green/10">
-                    <Info className="w-3 h-3" />
-                    MALANGA BRUNCH INTELLIGENCE
-                  </div>
                 </div>
               )}
+
+              {/* Footer del panel derecho */}
+              <div className="pt-10 flex items-center gap-3 text-[10px] text-malanga-green/40 justify-center border-t border-malanga-green/10">
+                <Leaf className="w-3 h-3" />
+                MALANGA BRUNCH INTELLIGENCE SYSTEM
+              </div>
             </div>
           </div>
         </div>
@@ -203,7 +201,7 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ recipe, onClose }) => {
             className="px-12 py-4 bg-malanga-white border border-malanga-green/20 text-malanga-green hover:bg-malanga-green hover:text-malanga-white rounded-full text-xs font-black uppercase tracking-[0.3em] transition-all shadow-sm"
             onClick={onClose}
           >
-            Cerrar Ficha
+            Finalizar Revisión
           </button>
         </div>
       </div>
