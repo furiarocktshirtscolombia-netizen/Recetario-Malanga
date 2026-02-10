@@ -7,20 +7,20 @@ const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 export const getRecipeEnhancement = async (recipe: Recipe): Promise<GeminiEnhancement> => {
   const ingredientesText = recipe.ingredientes.map(i => `${i.cantidad} ${i.unidad} de ${i.insumo}`).join(', ');
   
-  const prompt = `Actúa como un Chef Ejecutivo de un restaurante Michelin. Analiza esta ficha técnica:
-    Nombre: ${recipe.nombre}
-    Familia: ${recipe.familia}
+  const prompt = `Actúa como el Chef Ejecutivo de Malanga Brunch & Coffee. Analiza esta ficha técnica técnica de la matriz de costos:
+    Plato/Preparación: ${recipe.nombre}
+    Categoría/Familia: ${recipe.familia}
     Descripción: ${recipe.descripcion || 'No disponible'}
-    Ingredientes: ${ingredientesText}
-    Proceso: ${recipe.instrucciones}
+    Ingredientes base: ${ingredientesText}
+    Proceso actual: ${recipe.instrucciones}
 
-    Genera una respuesta profesional en JSON con:
-    1. "variacionGourmet": Una elevación creativa de la receta usando técnicas de vanguardia.
-    2. "maridajeSugerido": La bebida perfecta (vino, craft beer o signature cocktail).
-    3. "tipPro": Un secreto técnico para mejorar la textura, sabor o rendimiento.
-    4. "valorNutricional": Breve análisis de los macros y calidad de insumos.
+    Genera una respuesta profesional en JSON con el estilo elegante y de brunch de Malanga:
+    1. "variacionGourmet": Una elevación del plato manteniendo el estilo de brunch artesanal.
+    2. "maridajeSugerido": La bebida ideal (Café de especialidad, Cocktail de autor o Jugo natural).
+    3. "tipPro": Un secreto técnico para perfeccionar la textura o el emplatado.
+    4. "valorNutricional": Análisis breve centrado en la calidad de los ingredientes.
     
-    Responde solo con el JSON.`;
+    Responde exclusivamente con el JSON.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -47,10 +47,10 @@ export const getRecipeEnhancement = async (recipe: Recipe): Promise<GeminiEnhanc
   } catch (error) {
     console.error("Gemini enhancement failed:", error);
     return {
-      variacionGourmet: "No se pudo generar en este momento.",
-      maridajeSugerido: "Recomendado: Cerveza artesanal de la casa.",
-      tipPro: "Mantener la cadena de frío es vital para la textura de esta receta.",
-      valorNutricional: "Perfil proteico alto con balance de grasas."
+      variacionGourmet: "Recomendamos usar masa madre para elevar el perfil de sabor.",
+      maridajeSugerido: "Un Espresso Tonic con frutos rojos es el balance ideal.",
+      tipPro: "Controlar la temperatura de los lácteos garantiza la cremosidad exacta.",
+      valorNutricional: "Balanceado, rico en fibras y carbohidratos complejos."
     };
   }
 };
