@@ -83,21 +83,21 @@ const App: React.FC = () => {
       <header className="sticky top-0 z-40 bg-malanga-green text-malanga-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
+            {/* Branding: Logo Oficial */}
             <div 
-              className="flex items-center gap-4 cursor-pointer" 
+              className="flex items-center cursor-pointer hover:opacity-80 transition-opacity" 
               onClick={() => {setSelectedFamily(null); setSearchQuery('');}}
             >
-              <div className="bg-malanga-white p-2 rounded-full shadow-md">
-                <Leaf className="w-6 h-6 text-malanga-green" />
-              </div>
-              <div className="flex flex-col">
-                <h1 className="text-2xl font-black tracking-tighter leading-none">
-                  MALANGA <span className="opacity-70 font-light">MATRIZ</span>
-                </h1>
-                <span className="text-[10px] uppercase font-bold tracking-[0.2em] mt-1 opacity-80">
-                  Gestión Gastronómica Pro
-                </span>
-              </div>
+              <img 
+                src="logo-malanga.png" 
+                alt="Malanga del Trópico" 
+                className="h-10 md:h-12 w-auto object-contain"
+                onError={(e) => {
+                  // Fallback por si la imagen no existe aún en el root
+                  e.currentTarget.style.display = 'none';
+                  e.currentTarget.parentElement!.innerHTML = '<h1 class="text-2xl font-black tracking-tighter">MALANGA</h1>';
+                }}
+              />
             </div>
 
             <div className="flex-1 max-w-md mx-8 relative group hidden md:block">
@@ -241,7 +241,7 @@ const App: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-3 mb-6">
             <Leaf className="w-5 h-5 text-malanga-green" />
-            <span className="text-malanga-greenDark font-black tracking-widest text-sm uppercase">Malanga Matriz System</span>
+            <span className="text-malanga-greenDark font-black tracking-widest text-sm uppercase">Malanga Brunch & Coffee</span>
           </div>
           <p className="text-malanga-text/40 text-[10px] uppercase font-bold tracking-[0.4em]">
             Propiedad de Malanga Brunch & Coffee · Excel Intelligence v3.0
