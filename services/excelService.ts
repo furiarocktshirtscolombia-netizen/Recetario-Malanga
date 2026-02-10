@@ -45,13 +45,11 @@ function sheetToMatrixWithMerges(sheet: any): any[][] {
 }
 
 /**
- * Detecta si una fila es un encabezado de tabla de ingredientes.
- * Altamente tolerante a variaciones técnicas de Malanga.
+ * Detector de headers (más tolerante y robusto).
  */
 function isHeaderRow(row: any[]) {
   const r = (row || []).map(normKey);
 
-  // Columna de item: acepta ingrediente, artículo, insumos
   const hasItem = r.some(v =>
     v.includes("ingrediente") ||
     v.includes("insumo") ||
@@ -59,17 +57,14 @@ function isHeaderRow(row: any[]) {
     /art.?culo/.test(v)
   );
 
-  // Columna de unidad: acepta unidad, und, u medida, medida
   const hasUnit = r.some(v =>
     v === "und" ||
     v.includes("unidad") ||
     v.includes("u. medida") ||
     v.includes("u medida") ||
-    v.includes("medida") ||
-    v.includes("unidad medida")
+    v.includes("medida")
   );
 
-  // Columna de cantidad: acepta cant, cantidad, unidades, unidades netas
   const hasQty = r.some(v =>
     v.includes("cant") ||
     v.includes("cantidad") ||
@@ -92,7 +87,7 @@ function findRecipeTitle(matrix: any[][], headerRowIdx: number) {
       return { nombre: best, titleRowIdx: r };
     }
   }
-  return { nombre: `RECETA SIN NOMBRE (Fila ${headerRowIdx + 1})`, titleRowIdx: headerRowIdx };
+  return { nombre: `RECETA SIN NOMBRE`, titleRowIdx: headerRowIdx };
 }
 
 function getTextBelowLabel(matrix: any[][], startRow: number, endRow: number, labels: string[]) {
@@ -119,9 +114,6 @@ function findCol(normHeader: string[], predicates: ((v: string) => boolean)[]) {
   return -1;
 }
 
-/** 
- * Excluye solo hojas técnicas puras.
- */
 function shouldIncludeSheet(name: string): boolean {
   const n = normKey(name);
   const excludeExact = new Set([
@@ -129,10 +121,11 @@ function shouldIncludeSheet(name: string): boolean {
     "rotacion",
     "rotación",
     "matriz carta",
-    "index",
-    "config",
+    "resumen",
     "dashboard",
-    "resumen"
+    "config",
+    "parametros",
+    "parámetros"
   ]);
   return !excludeExact.has(n);
 }
@@ -146,45 +139,38 @@ export const parseRecipesFromExcel = async (file: File): Promise<Family[]> => {
         const workbook = XLSX.read(data, { type: 'binary' });
         const families: Family[] = [];
 
-        console.log("✅ Hojas detectadas en el Workbook:", workbook.SheetNames);
+        console.log("✅ SheetNames detectadas:", workbook.SheetNames);
 
         for (const sheetName of workbook.SheetNames) {
           if (!shouldIncludeSheet(sheetName)) {
-            console.log(`🚫 Hoja técnica omitida: ${sheetName}`);
+            console.log(`🚫 Excluida hoja técnica: ${sheetName}`);
             continue;
           }
           
           const sheet = workbook.Sheets[sheetName];
           const matrix = sheetToMatrixWithMerges(sheet);
           
-          // 1. Detectar TODOS los encabezados en la hoja (multi-bloque)
+          // Encuentra TODOS los headers, incluso repetidos en la hoja
           const headerRows: number[] = [];
           for (let i = 0; i < matrix.length; i++) {
             if (isHeaderRow(matrix[i])) headerRows.push(i);
           }
 
           const recipes: Recipe[] = [];
-          
-          // 2. Iterar por cada bloque detectado
+
+          // Parsear múltiples recetas por hoja
           for (let i = 0; i < headerRows.length; i++) {
             const headerRowIdx = headerRows[i];
             const nextHeader = (i < headerRows.length - 1) ? headerRows[i + 1] : matrix.length;
-            
-            // Título robusto con fallback dinámico
-            let { nombre, titleRowIdx } = findRecipeTitle(matrix, headerRowIdx);
-            if (nombre.startsWith("RECETA SIN NOMBRE")) {
-              nombre = `${sheetName} (Bloque ${i + 1})`;
-            }
 
             const header = matrix[headerRowIdx] || [];
             const normHeader = header.map(normKey);
 
-            // Búsqueda de columnas con soporte de sinónimos ampliado
             const colItem = findCol(normHeader, [
               v => v.includes("ingrediente"),
-              v => /art.?culo/.test(v),
               v => v.includes("insumo"),
               v => v.includes("insumos"),
+              v => /art.?culo/.test(v),
             ]);
 
             const colUnidad = findCol(normHeader, [
@@ -193,7 +179,6 @@ export const parseRecipesFromExcel = async (file: File): Promise<Family[]> => {
               v => v.includes("u. medida"),
               v => v.includes("u medida"),
               v => v.includes("medida"),
-              v => v.includes("unidad medida"),
             ]);
 
             const colCant = findCol(normHeader, [
@@ -203,62 +188,76 @@ export const parseRecipesFromExcel = async (file: File): Promise<Family[]> => {
               v => v.includes("unidades"),
             ]);
 
+            // Si no encuentra columna de item o cantidad, salta bloque
             if (colItem === -1 || colCant === -1) {
-              console.warn(`⚠️ Bloque en "${sheetName}" ignorado: No se encontró columna de Insumo o Cantidad.`);
+              console.warn(`⚠️ Bloque en "${sheetName}" ignorado por falta de columnas clave.`);
               continue;
             }
 
+            // Título robusto
+            let { nombre } = findRecipeTitle(matrix, headerRowIdx);
+            if (nombre.startsWith("RECETA SIN NOMBRE")) {
+              nombre = `${sheetName} (RECETA ${i + 1})`;
+            }
+
+            // Ingredientes dentro del rango del bloque
             const ingredients: Ingredient[] = [];
-            // Parsear filas hasta el siguiente encabezado o hasta una fila vacía/total
             for (let r = headerRowIdx + 1; r < nextHeader; r++) {
               const item = (matrix[r]?.[colItem] ?? "").toString().trim();
-              
-              // Cortar si la fila está vacía o contiene palabras de cierre
+
+              // Si se acabó la tabla o encontramos un separador
               if (!item || normKey(item).includes("total")) break;
-              
+
+              const unidad = colUnidad !== -1 ? (matrix[r]?.[colUnidad] ?? "").toString().trim() : "";
+              const cantidad = (matrix[r]?.[colCant] ?? "");
+
               ingredients.push({
                 insumo: item,
-                unidad: colUnidad !== -1 ? (matrix[r]?.[colUnidad] ?? "").toString().trim() : "",
-                cantidad: (matrix[r]?.[colCant] ?? "").toString().trim()
+                unidad,
+                cantidad,
               });
             }
 
             if (ingredients.length === 0) continue;
 
-            // Contexto de descripción y procesos limitado al bloque o alrededores inmediatos
-            const searchLimit = 40;
-            const contextStart = Math.max(0, headerRowIdx - searchLimit);
-            const contextEnd = Math.min(matrix.length - 1, nextHeader + searchLimit);
+            // Buscar descripción y proceso dentro del bloque ampliado
+            const blockStart = Math.max(0, headerRowIdx - 20);
+            const blockEnd = Math.min(matrix.length - 1, nextHeader + 60);
 
-            const descripcion = getTextBelowLabel(matrix, contextStart, contextEnd, ["descripcion de la carta", "descripcion carta"]);
-            const instrucciones = getTextBelowLabel(matrix, contextStart, contextEnd, ["proceso de elaboracion", "proceso de elaboración", "preparacion", "preparación"]);
+            const descripcion = getTextBelowLabel(
+              matrix, blockStart, blockEnd, ["descripcion de la carta", "descripcion carta"]
+            );
+
+            const instrucciones = getTextBelowLabel(
+              matrix, blockStart, blockEnd, ["proceso de elaboracion", "proceso de elaboración", "preparacion", "preparación"]
+            );
 
             recipes.push({
-              id: `${sheetName}-${headerRowIdx}-${i}`,
+              id: `${sheetName}::${headerRowIdx + 1}`,
               familia: sheetName,
               nombre: nombre,
-              ingredientes: ingredients,
               descripcion: descripcion || undefined,
-              instrucciones: instrucciones || "Consultar procesos en matriz técnica de cocina.",
+              instrucciones: instrucciones || "Consultar procesos técnicos en matriz de cocina.",
+              ingredientes: ingredients,
             });
           }
 
           if (recipes.length > 0) {
             families.push({ name: sheetName, recipes });
           } else {
-            console.warn(`⚠️ Hoja "${sheetName}" procesada pero 0 recetas detectadas.`);
+            console.warn(`⚠️ Hoja incluida pero sin recetas detectadas: ${sheetName}`);
           }
         }
 
-        // Ordenamiento alfabético final
+        // Ordenamiento alfabético
         families.sort((a, b) => a.name.localeCompare(b.name, "es"));
 
-        console.log(`✅ Carga finalizada exitosamente.`);
+        console.log(`✅ Carga finalizada.`);
         console.table(families.map(f => ({ familia: f.name, recetas: f.recipes.length })));
 
         resolve(families);
       } catch (err) {
-        console.error("❌ Error crítico en excelService:", err);
+        console.error("❌ Error en excelService:", err);
         reject(err);
       }
     };
