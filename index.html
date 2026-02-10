@@ -5,10 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Recetario Pro | Malanga</title>
 
-  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- SheetJS (Excel) -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
   <script>
@@ -22,42 +19,22 @@
               pink: "#F6D9D6",
               pinkSoft: "#F9E4E1",
               white: "#FAFAF8",
-              text: "#3A3A3A",
-            },
+              text: "#3A3A3A"
+            }
           },
           fontFamily: {
             serif: ["Georgia", "serif"],
-            sans: ["Inter", "system-ui", "sans-serif"],
-          },
-        },
-      },
+            sans: ["Inter", "system-ui", "sans-serif"]
+          }
+        }
+      }
     };
   </script>
 
   <style>
-    body {
-      background-color: #F6D9D6;
-      color: #3A3A3A;
-      font-family: Georgia, serif;
-      margin: 0;
-    }
-
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 8px; }
-    ::-webkit-scrollbar-track { background: #F9E4E1; }
-    ::-webkit-scrollbar-thumb { background: #3E5B46; border-radius: 4px; }
-    ::-webkit-scrollbar-thumb:hover { background: #2F4A3A; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-
-    .malanga-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
+    body { background:#F6D9D6; color:#3A3A3A; font-family:Georgia, serif; margin:0; }
   </style>
 
-  <!-- Import map (ESM) -->
   <script type="importmap">
   {
     "imports": {
@@ -70,12 +47,12 @@
   </script>
 </head>
 
-<body class="bg-malanga-pink text-malanga-text font-serif selection:bg-malanga-green selection:text-white">
+<body class="bg-malanga-pink text-malanga-text font-serif">
   <div id="root"></div>
 
-  <!-- ✅ IMPORTANTÍSIMO: usa ruta RELATIVA -->
+  <!-- ⚠️ esto no funciona en GH Pages si es TSX -->
   <script type="module" src="./index.tsx"></script>
 </body>
-  <script type="module" src="/index.tsx"></script>
 </html>
+
 
