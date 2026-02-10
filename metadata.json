@@ -1,0 +1,7 @@
+{
+  "name": "Recetario Pro | MALANGA",
+  "description": "A professional recipe management system for culinary experts, featuring Excel integration and Gemini AI-powered recipe enhancement.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
