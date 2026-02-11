@@ -11,6 +11,29 @@
   <!-- SheetJS (Excel) -->
   <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/dist/xlsx.full.min.js"></script>
 
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            malanga: {
+              green: "#3E5B46",
+              greenDark: "#2F4A3A",
+              pink: "#F6D9D6",
+              pinkSoft: "#F9E4E1",
+              white: "#FAFAF8",
+              text: "#3A3A3A",
+            },
+          },
+          fontFamily: {
+            serif: ["Georgia", "serif"],
+            sans: ["Inter", "system-ui", "sans-serif"],
+          },
+        },
+      },
+    };
+  </script>
+
   <style>
     body {
       background-color: #F6D9D6;
@@ -31,24 +54,26 @@
     .malanga-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   </style>
 
-  <!-- Import map (limpio y compatible) -->
+  <!-- Import map -->
   <script type="importmap">
-  {
-    "imports": {
-      "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-      "react": "https://esm.sh/react@^19.2.4",
-      "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
-      "lucide-react": "https://esm.sh/lucide-react@^0.563.0"
-    }
+{
+  "imports": {
+    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
   }
-  </script>
+}
+</script>
 </head>
 
-<!-- ✅ En CDN usa valores directos (o deja el body con CSS como ya lo tienes) -->
-<body class="selection:bg-[#3E5B46] selection:text-white">
+<body class="bg-malanga-pink text-malanga-text font-serif selection:bg-malanga-green selection:text-white">
   <div id="root"></div>
 
-  <!-- ✅ Deploy estático: JS y ruta RELATIVA -->
+  <!-- ✅ Para deploy estático: JS, y ruta RELATIVA -->
   <script type="module" src="./index.js"></script>
 </body>
 </html>
+
