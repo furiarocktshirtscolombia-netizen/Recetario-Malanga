@@ -41,8 +41,6 @@
       font-family: Georgia, serif;
       margin: 0;
     }
-
-    /* Scrollbar */
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: #F9E4E1; }
     ::-webkit-scrollbar-thumb { background: #3E5B46; border-radius: 4px; }
@@ -53,11 +51,10 @@
       to { opacity: 1; transform: translateY(0); }
     }
     .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
-
     .malanga-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   </style>
 
-  <!-- Import map (ESM) -->
+  <!-- Import map -->
   <script type="importmap">
 {
   "imports": {
@@ -75,8 +72,8 @@
 <body class="bg-malanga-pink text-malanga-text font-serif selection:bg-malanga-green selection:text-white">
   <div id="root"></div>
 
-  <!-- ✅ IMPORTANTÍSIMO: usa ruta RELATIVA -->
+  <!-- ✅ Para deploy estático: JS, y ruta RELATIVA -->
+  <script type="module" src="./index.js"></script>
 </body>
-<script type="module" src="/index.tsx"></script>
 </html>
 
