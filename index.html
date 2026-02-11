@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Recetario Pro | Malanga</title>
 
-  <!-- Tailwind -->
+  <!-- Tailwind (si tu plataforma bloquea CDNs, habrá que compilarlo y servir CSS local) -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- SheetJS (Excel) -->
@@ -35,45 +35,44 @@
   </script>
 
   <style>
-    body {
-      background-color: #F6D9D6;
-      color: #3A3A3A;
-      font-family: Georgia, serif;
-      margin: 0;
-    }
+    body { background-color: #F6D9D6; color: #3A3A3A; font-family: Georgia, serif; margin: 0; }
     ::-webkit-scrollbar { width: 8px; }
     ::-webkit-scrollbar-track { background: #F9E4E1; }
     ::-webkit-scrollbar-thumb { background: #3E5B46; border-radius: 4px; }
     ::-webkit-scrollbar-thumb:hover { background: #2F4A3A; }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
     .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
     .malanga-transition { transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
   </style>
 
-  <!-- Import map -->
+  <!-- Import map (PINNED + imports que React suele necesitar) -->
   <script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "react": "https://esm.sh/react@^19.2.4",
-    "react-dom/client": "https://esm.sh/react-dom@^19.2.4/client",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/"
+  {
+    "imports": {
+      "@google/genai": "https://esm.sh/@google/genai@1.40.0",
+
+      "react": "https://esm.sh/react@19.2.4",
+      "react/": "https://esm.sh/react@19.2.4/",
+
+      "react-dom": "https://esm.sh/react-dom@19.2.4",
+      "react-dom/": "https://esm.sh/react-dom@19.2.4/",
+      "react-dom/client": "https://esm.sh/react-dom@19.2.4/client",
+
+      "react/jsx-runtime": "https://esm.sh/react@19.2.4/jsx-runtime",
+      "react/jsx-dev-runtime": "https://esm.sh/react@19.2.4/jsx-dev-runtime",
+
+      "lucide-react": "https://esm.sh/lucide-react@0.563.0"
+    }
   }
-}
-</script>
+  </script>
 </head>
 
 <body class="bg-malanga-pink text-malanga-text font-serif selection:bg-malanga-green selection:text-white">
   <div id="root"></div>
 
-  <!-- ✅ Para deploy estático: JS, y ruta RELATIVA -->
+  <!-- Entry point: asegúrate que exista en el deploy final -->
   <script type="module" src="./index.js"></script>
 </body>
 </html>
+
 
