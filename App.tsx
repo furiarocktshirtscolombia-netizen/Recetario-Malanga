@@ -8,7 +8,6 @@ import {
   ChevronLeft,
   LayoutGrid,
   Library,
-  Sparkles,
   RefreshCcw
 } from 'lucide-react';
 import { Recipe, Family } from './types';
@@ -207,10 +206,6 @@ const App: React.FC = () => {
                   <h2 className="text-5xl font-black text-malanga-greenDark uppercase tracking-tighter leading-none">{selectedFamily.name}</h2>
                   <p className="text-malanga-green font-bold text-xs uppercase tracking-[0.3em] mt-2 italic">Colección de recetas técnicas</p>
                 </div>
-              </div>
-              <div className="bg-malanga-green text-malanga-white px-8 py-3 rounded-full flex items-center gap-3 shadow-lg">
-                <Sparkles className="w-5 h-5" />
-                <span className="font-black text-xs uppercase tracking-wider">Potenciado con Gemini AI</span>
               </div>
             </div>
 

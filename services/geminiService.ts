@@ -1,73 +1,39 @@
-import type { Recipe, GeminiEnhancement } from "../types";
+
+import { GoogleGenAI, Type } from "@google/genai";
+import { Recipe, GeminiEnhancement } from "../types";
 
 /**
- * ✅ Lee la API key desde variables Vite.
- * (En Vercel debe ser VITE_GEMINI_API_KEY)
- * También soporta VITE_API_KEY por si la nombraste así.
+ * 🧠 Genera mejoras gourmet usando Gemini 3 Flash
  */
-function getApiKey(): string | null {
-  const k =
-    (import.meta.env.VITE_GEMINI_API_KEY as string | undefined) ??
-    (import.meta.env.VITE_API_KEY as string | undefined);
-
-  if (!k) return null;
-
-  const key = String(k).trim();
-  if (!key || key.toLowerCase() === "undefined" || key.toLowerCase() === "null") return null;
-
-  return key;
-}
-
-/**
- * 🌿 Fallback elegante (no tumba la app)
- */
-function fallbackEnhancement(): GeminiEnhancement {
-  return {
-    variacionGourmet:
-      "Podemos elevar el plato con un acabado artesanal: un topping fresco, un crocante y una salsa ligera para realzar aromas.",
-    maridajeSugerido:
-      "Marida perfecto con un café de especialidad (filtrado) o un cold brew cítrico para balancear sabores.",
-    tipPro:
-      "Controla temperatura y reposos: pequeños ajustes logran mejor textura, brillo y emplatado más limpio.",
-    valorNutricional:
-      "Preparación balanceada con enfoque en ingredientes frescos; buena energía y mejor perfil si priorizas fibras y proteínas.",
-  };
-}
-
-export const getRecipeEnhancement = async (recipe: Recipe): Promise<GeminiEnhancement> => {
+export const getRecipeEnhancement = async (
+  recipe: Recipe
+): Promise<GeminiEnhancement> => {
   try {
-    const API_KEY = getApiKey();
-
-    // ✅ Sin key -> NO intentamos cargar Gemini, devolvemos fallback
-    if (!API_KEY) {
-      console.warn("⚠️ Gemini desactivado: no hay VITE_GEMINI_API_KEY");
-      return fallbackEnhancement();
-    }
-
-    // ✅ Import dinámico para evitar crash al cargar la app
-    const genai = await import("@google/genai");
-    const { GoogleGenAI, Type } = genai;
-
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // Direct initialization using the apiKey from process.env as per guidelines
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
     const ingredientesText = recipe.ingredientes
-      .map((i) => `${i.cantidad} ${i.unidad} de ${i.insumo}`)
+      .map(i => `${i.cantidad} ${i.unidad} de ${i.insumo}`)
       .join(", ");
 
-    const prompt = `Actúa como el Chef Ejecutivo de Malanga Brunch & Coffee. Analiza esta ficha técnica de la matriz de costos:
-Plato/Preparación: ${recipe.nombre}
-Categoría/Familia: ${recipe.familia}
-Descripción: ${recipe.descripcion || "No disponible"}
-Ingredientes base: ${ingredientesText}
-Proceso actual: ${recipe.instrucciones}
+    const prompt = `
+Actúa como el Chef Ejecutivo de Malanga Brunch & Coffee.
+Analiza la siguiente ficha técnica:
 
-Genera una respuesta profesional en JSON con el estilo elegante y de brunch de Malanga:
-1. "variacionGourmet": Una elevación del plato manteniendo el estilo de brunch artesanal.
-2. "maridajeSugerido": La bebida ideal (Café de especialidad, Cocktail de autor o Jugo natural).
-3. "tipPro": Un secreto técnico para perfeccionar la textura o el emplatado.
-4. "valorNutricional": Análisis breve centrado en la calidad de los ingredientes.
+Plato: ${recipe.nombre}
+Familia: ${recipe.familia}
+Insumos: ${ingredientesText}
+Proceso Técnico: ${recipe.preparacion || recipe.instrucciones}
+Instrucciones de Servicio/Emplatado: ${recipe.emplatado || "No especificado"}
 
-Responde exclusivamente con el JSON.`;
+Genera una respuesta en JSON con este esquema exacto:
+{
+  "variacionGourmet": "Propuesta de elevación creativa estilo Malanga",
+  "maridajeSugerido": "Bebida ideal del menú Malanga",
+  "tipPro": "Secreto técnico de alta cocina para este plato",
+  "valorNutricional": "Breve nota sobre la calidad nutricional"
+}
+`;
 
     const response = await ai.models.generateContent({
       model: "gemini-3-flash-preview",
@@ -88,12 +54,16 @@ Responde exclusivamente con el JSON.`;
     });
 
     const text = response.text;
-    if (!text) return fallbackEnhancement();
+    if (!text) throw new Error("Respuesta vacía");
 
     return JSON.parse(text) as GeminiEnhancement;
   } catch (error) {
-    console.error("⚠️ Gemini enhancement failed (safe fallback):", error);
-    return fallbackEnhancement();
+    console.error("Gemini Error:", error);
+    return {
+      variacionGourmet: "Una versión elevada con técnicas artesanales y acabados frescos.",
+      maridajeSugerido: "Café de especialidad de origen latinoamericano.",
+      tipPro: "El control preciso de temperatura garantiza la textura perfecta.",
+      valorNutricional: "Balance equilibrado de ingredientes frescos y naturales.",
+    };
   }
 };
-

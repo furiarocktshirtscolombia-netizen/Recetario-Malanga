@@ -3,236 +3,122 @@ import { Recipe, Family, Ingredient } from '../types';
 
 declare const XLSX: any;
 
-/**
- * Normaliza strings para comparaciones robustas (quita acentos, espacios extra y pasa a minúsculas)
- */
-function normKey(x: any) {
-  let s = (x ?? "").toString().toLowerCase();
-  s = s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "");
-  s = s.replace(/[\u00AD\u200B-\u200D\uFEFF]/g, "");
-  s = s.replace(/\s+/g, " ").trim();
-  return s;
-}
-
-function hasLetters(s: string) {
-  return /[a-zA-ZáéíóúñÁÉÍÓÚÑ]/.test(s);
+function cleanStr(v: any): string {
+  return (v ?? "").toString().trim();
 }
 
 /**
- * Filtra candidatos a título que son en realidad parte del header o basura
+ * Corrige errores comunes de codificación (mojibake)
  */
-function isBadTitleCandidate(txt: string) {
-  const t = normKey(txt);
-  if (!t) return true;
-  if (!isNaN(Number(t))) return true;
-  const banned = [
-    "analisis", "receta", "costo", "coste", "subtotal", "total", "margen", "ganancia",
-    "ingrediente", "articulo", "unidad", "unidades", "und", "cant", "cantidad", "netas",
-    "descripcion", "carta", "proceso", "elaboracion", "preparacion", "foto", "insumo", "insumos"
-  ];
-  return banned.some(w => t.includes(w));
+function fixMojibake(s: string): string {
+  if (!s) return s;
+  return s
+    .replace(/Ã‘/g, "Ñ")
+    .replace(/Ã±/g, "ñ")
+    .replace(/Ã“/g, "Ó")
+    .replace(/Ã³/g, "ó")
+    .replace(/Ãš/g, "Ú")
+    .replace(/Ãº/g, "ú")
+    .replace(/Ã‰/g, "É")
+    .replace(/Ã©/g, "é")
+    .replace(/Ã\u0081/g, "Á")
+    .replace(/Ã¡/g, "á")
+    .replace(/Ã\u008d/g, "Í")
+    .replace(/Ã\u00ad/g, "í");
 }
 
 /**
- * Convierte hoja a matriz manejando celdas combinadas (merges)
+ * Parsea números de Excel de forma robusta manejando comas y puntos
+ * Soporta: 15,000 | 120.000 | 0,500 | 21.053
  */
-function sheetToMatrixWithMerges(sheet: any): any[][] {
-  const matrix: any[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, blankrows: true, defval: "" }) as any[][];
-  const merges = (sheet["!merges"] || []) as any[];
-  for (const m of merges) {
-    const v = matrix?.[m.s.r]?.[m.s.c] ?? "";
-    for (let r = m.s.r; r <= m.e.r; r++) {
-      for (let c = m.s.c; c <= m.e.c; c++) {
-        if (!matrix[r]) matrix[r] = [];
-        if ((matrix[r][c] ?? "") === "") {
-          matrix[r][c] = v;
-        }
-      }
+function parseNumberLikeExcel(v: any): number | null {
+  const s = cleanStr(v);
+  if (!s) return null;
+  if (typeof v === "number") return v;
+
+  let normalized = s;
+  const hasComma = normalized.includes(",");
+  const hasDot = normalized.includes(".");
+
+  if (hasComma && !hasDot) {
+    // Caso 0,500 -> 0.500
+    normalized = normalized.replace(",", ".");
+  } else if (hasDot && !hasComma) {
+    // Caso 120.000 o 21.053
+    // Si termina en .XXX asumimos que el punto es de miles si es que parece entero grande
+    if (/\d+\.\d{3}$/.test(normalized)) {
+      normalized = normalized.replace(/\./g, "");
     }
+  } else if (hasComma && hasDot) {
+    // 1.234,56 -> 1234.56 | 1,234.56 -> 1234.56
+    const lastComma = normalized.lastIndexOf(",");
+    const lastDot = normalized.lastIndexOf(".");
+    const decimalSep = lastComma > lastDot ? "," : ".";
+    const thousandSep = decimalSep === "," ? "." : ",";
+    normalized = normalized.split(thousandSep).join("");
+    normalized = normalized.replace(decimalSep, ".");
   }
-  return matrix;
+
+  const n = Number(normalized);
+  return Number.isFinite(n) ? n : null;
 }
 
 /**
- * ✅ A) Detector de headers (más tolerante)
+ * Formatea cantidades para visualización (máximo 3 decimales, quita ceros innecesarios)
  */
-function isHeaderRow(row: any[]) {
-  const r = (row || []).map(normKey);
-
-  const hasItem = r.some(v =>
-    v.includes("ingrediente") ||
-    v.includes("insumo") ||
-    v.includes("insumos") ||
-    /art.?culo/.test(v)
-  );
-
-  const hasUnit = r.some(v =>
-    v === "und" ||
-    v.includes("unidad") ||
-    v.includes("u. medida") ||
-    v.includes("u medida") ||
-    v.includes("medida")
-  );
-
-  const hasQty = r.some(v =>
-    v.includes("cant") ||
-    v.includes("cantidad") ||
-    v.includes("unidades") ||
-    v.includes("unidades netas")
-  );
-
-  return hasItem && (hasUnit || hasQty);
+function formatQty(n: number | null): string {
+  if (n === null || n === undefined) return "0";
+  return n.toFixed(3).replace(/\.?0+$/, "");
 }
 
 /**
- * ✅ B) Encuentra TODOS los headers repetidos
+ * Extrae texto de la columna M (índice 12) entre dos límites de fila,
+ * separando "Preparación", "Emplatado" y "Descripción".
  */
-function findHeaderRows(matrix: any[][]) {
-  const rows: number[] = [];
-  for (let i = 0; i < matrix.length; i++) {
-    if (isHeaderRow(matrix[i])) rows.push(i);
-  }
-  return rows;
-}
+function extractMetadata(rows: any[][], startRow: number, endRowExclusive: number) {
+  const colM = 12; // M (0-based index 12)
+  let prep: string[] = [];
+  let plating: string[] = [];
+  let description: string[] = [];
+  let mode: "prep" | "plating" | "desc" | null = null;
 
-/**
- * Busca el título de la receta arriba del header
- */
-function findRecipeTitle(matrix: any[][], headerRowIdx: number) {
-  // Buscar hasta 15 filas hacia arriba
-  for (let r = headerRowIdx - 1; r >= Math.max(0, headerRowIdx - 15); r--) {
-    const row = matrix[r] || [];
-    const candidates = row
-      .filter(v => typeof v === "string")
-      .map(v => v.trim())
-      .filter(v => v.length >= 3 && hasLetters(v) && !isBadTitleCandidate(v));
-    
-    if (candidates.length) {
-      // Tomar el más largo (usualmente es el nombre completo)
-      const best = candidates.sort((a, b) => b.length - a.length)[0];
-      return { nombre: best };
+  for (let r = startRow; r < endRowExclusive; r++) {
+    const cell = fixMojibake(cleanStr(rows[r]?.[colM]));
+    if (!cell) continue;
+
+    const lower = cell.toLowerCase();
+
+    // Detección de encabezados de sección en Col M
+    if (lower.includes("preparaci")) {
+      mode = "prep";
+      const after = cell.replace(/^(preparaci[oó]n|preparacion)\s*:?\s*/i, "");
+      if (after) prep.push(after);
+      continue;
     }
-  }
-  return { nombre: "RECETA SIN NOMBRE" };
-}
-
-function findCol(normHeader: string[], predicates: ((v: string) => boolean)[]) {
-  for (const p of predicates) {
-    const idx = normHeader.findIndex(p);
-    if (idx !== -1) return idx;
-  }
-  return -1;
-}
-
-function getTextBelowLabel(matrix: any[][], startRow: number, endRow: number, labels: string[]) {
-  const targets = labels.map(normKey);
-  for (let r = startRow; r <= endRow; r++) {
-    const row = matrix[r] || [];
-    for (let c = 0; c < row.length; c++) {
-      const v = normKey(row[c]);
-      if (!v) continue;
-      if (targets.some(t => v.includes(t))) {
-        // El texto suele estar justo debajo o a la derecha (aquí buscamos debajo)
-        const below = (matrix[r + 1] || [])[c];
-        return (below ?? "").toString().trim();
-      }
+    if (lower.includes("emplatado")) {
+      mode = "plating";
+      const after = cell.replace(/^(emplatado)\s*:?\s*/i, "");
+      if (after) plating.push(after);
+      continue;
     }
-  }
-  return "";
-}
-
-/**
- * ✅ 2) Parsear múltiples recetas por hoja
- */
-function parseFamilySheet(sheetName: string, sheet: any): Recipe[] {
-  const matrix = sheetToMatrixWithMerges(sheet);
-  const headerRows = findHeaderRows(matrix);
-  const recipes: Recipe[] = [];
-
-  for (let i = 0; i < headerRows.length; i++) {
-    const headerRowIdx = headerRows[i];
-    const nextHeader = (i < headerRows.length - 1) ? headerRows[i + 1] : matrix.length;
-
-    const header = matrix[headerRowIdx] || [];
-    const normHeader = header.map(normKey);
-
-    const colItem = findCol(normHeader, [
-      v => v.includes("ingrediente"),
-      v => v.includes("insumo"),
-      v => v.includes("insumos"),
-      v => /art.?culo/.test(v),
-    ]);
-
-    const colUnidad = findCol(normHeader, [
-      v => v === "und",
-      v => v.includes("unidad"),
-      v => v.includes("u. medida"),
-      v => v.includes("u medida"),
-      v => v.includes("medida"),
-    ]);
-
-    const colCant = findCol(normHeader, [
-      v => v.includes("cant"),
-      v => v.includes("cantidad"),
-      v => v.includes("unidades netas"),
-      v => v.includes("unidades"),
-    ]);
-
-    // Salta si no encuentra columnas críticas
-    if (colItem === -1 || colCant === -1) continue;
-
-    // Título robusto
-    let { nombre } = findRecipeTitle(matrix, headerRowIdx);
-    if (nombre.startsWith("RECETA SIN NOMBRE")) {
-      nombre = `${sheetName} (BLOQUE ${i + 1})`;
+    if (lower.includes("descripci") || lower.includes("carta")) {
+      mode = "desc";
+      const after = cell.replace(/^(descripci[oó]n|carta)\s*:?\s*/i, "");
+      if (after) description.push(after);
+      continue;
     }
 
-    // Ingredientes
-    const ingredients: Ingredient[] = [];
-    for (let r = headerRowIdx + 1; r < nextHeader; r++) {
-      const item = (matrix[r]?.[colItem] ?? "").toString().trim();
-
-      // Si la celda está vacía, probablemente terminó la tabla
-      if (!item) break;
-      
-      // Evita filas de TOTAL o totales intermedios
-      if (normKey(item).includes("total")) break;
-
-      const unidad = colUnidad !== -1 ? (matrix[r]?.[colUnidad] ?? "").toString().trim() : "";
-      const cantidad = (matrix[r]?.[colCant] ?? "");
-
-      ingredients.push({
-        insumo: item,
-        unidad,
-        cantidad,
-      });
-    }
-
-    if (!ingredients.length) continue;
-
-    // Metadatos (Descripción y Proceso) dentro del rango del bloque
-    const blockStart = Math.max(0, headerRowIdx - 20);
-    const blockEnd = Math.min(matrix.length - 1, nextHeader + 30);
-
-    const descripcion = getTextBelowLabel(
-      matrix, blockStart, blockEnd, ["descripcion de la carta", "descripcion carta"]
-    );
-
-    const instrucciones = getTextBelowLabel(
-      matrix, blockStart, blockEnd, ["proceso de elaboracion", "proceso de elaboración", "preparacion", "preparación"]
-    );
-
-    recipes.push({
-      id: `${sheetName}::${headerRowIdx}`,
-      familia: sheetName,
-      nombre: nombre,
-      descripcion: descripcion || undefined,
-      instrucciones: instrucciones || "Consultar procesos técnicos en matriz.",
-      ingredientes: ingredients,
-    });
+    // Acumulación según modo actual
+    if (mode === "prep") prep.push(cell);
+    else if (mode === "plating") plating.push(cell);
+    else if (mode === "desc") description.push(cell);
   }
 
-  return recipes;
+  return {
+    prep: prep.join("\n").trim(),
+    plating: plating.join("\n").trim(),
+    description: description.join("\n").trim()
+  };
 }
 
 export const parseRecipesFromExcel = async (file: File): Promise<Family[]> => {
@@ -243,33 +129,89 @@ export const parseRecipesFromExcel = async (file: File): Promise<Family[]> => {
         const data = e.target?.result;
         const workbook = XLSX.read(data, { type: 'binary' });
         const families: Family[] = [];
+        
+        // Iteramos TODAS las hojas (familias) del libro
+        const sheetNames = workbook.SheetNames
+          .map(s => cleanStr(s))
+          .filter(Boolean);
 
-        for (const sheetName of workbook.SheetNames) {
-          // Ignorar solo hojas de sistema muy obvias
-          const n = normKey(sheetName);
-          if (["config", "dashboard", "parametros", "resumen"].includes(n)) continue;
-
+        for (const sheetName of sheetNames) {
           const sheet = workbook.Sheets[sheetName];
-          const recipes = parseFamilySheet(sheetName, sheet);
+          if (!sheet) continue;
 
-          if (recipes.length > 0) {
-            families.push({ name: sheetName, recipes });
+          // Leemos como matriz 2D (header: 1) para control total de índices
+          const rows: any[][] = XLSX.utils.sheet_to_json(sheet, {
+            header: 1,
+            raw: false,
+            defval: "",
+          });
+
+          // 1. Identificamos los inicios de bloque de receta (Col B == "Ingrediente")
+          const headerRowIndices: number[] = [];
+          for (let r = 0; r < rows.length; r++) {
+            const bValue = fixMojibake(cleanStr(rows[r]?.[1])); // Columna B
+            if (bValue.toLowerCase() === "ingrediente") {
+              headerRowIndices.push(r);
+            }
+          }
+
+          if (headerRowIndices.length === 0) continue;
+
+          const recipesInSheet: Recipe[] = [];
+
+          for (let i = 0; i < headerRowIndices.length; i++) {
+            const headerIndex = headerRowIndices[i];
+            const nextHeaderIndex = i + 1 < headerRowIndices.length ? headerRowIndices[i + 1] : rows.length;
+
+            // 2. Nombre de la receta: Fila inmediatamente anterior al header, Col B
+            const recipeName = fixMojibake(cleanStr(rows[headerIndex - 1]?.[1]));
+            if (!recipeName) continue;
+
+            // 3. Extracción de ingredientes (B: Insumo, C: Und, D: Unidades Netas)
+            const ingredients: Ingredient[] = [];
+            for (let r = headerIndex + 1; r < nextHeaderIndex; r++) {
+              const name = fixMojibake(cleanStr(rows[r]?.[1])); // B
+              if (!name || name.toLowerCase().includes("total")) break; // Fin de bloque de ingredientes
+
+              const unit = fixMojibake(cleanStr(rows[r]?.[2])); // C
+              const qtyRaw = rows[r]?.[3]; // D (Unidades Netas)
+              const qtyParsed = parseNumberLikeExcel(qtyRaw);
+
+              ingredients.push({
+                insumo: name,
+                unidad: unit,
+                cantidad: qtyParsed !== null ? formatQty(qtyParsed) : (qtyRaw || "0")
+              });
+            }
+
+            // 4. Metadatos (Columna M / Índice 12)
+            const metadata = extractMetadata(rows, headerIndex - 1, nextHeaderIndex);
+
+            recipesInSheet.push({
+              id: `${sheetName}__${recipeName}`.replace(/\s+/g, "_"),
+              familia: sheetName,
+              nombre: recipeName,
+              ingredientes: ingredients,
+              instrucciones: metadata.prep || "Pendiente de registro en matriz.",
+              preparacion: metadata.prep || undefined,
+              emplatado: metadata.plating || undefined,
+              descripcion: metadata.description || undefined
+            });
+          }
+
+          if (recipesInSheet.length > 0) {
+            families.push({
+              name: sheetName,
+              recipes: recipesInSheet
+            });
           }
         }
-
+        
+        // Orden alfabético de familias
         families.sort((a, b) => a.name.localeCompare(b.name, "es"));
-
-        // ✅ 3) Diagnóstico automático
-        console.log("📊 RESUMEN DE IMPORTACIÓN MALANGA:");
-        console.table(families.map(f => ({ 
-          Familia: f.name, 
-          "Cant. Recetas": f.recipes.length,
-          "Ejemplo": f.recipes[0]?.nombre 
-        })));
-
         resolve(families);
       } catch (err) {
-        console.error("❌ Error fatal en parseo:", err);
+        console.error("Error al procesar el Excel:", err);
         reject(err);
       }
     };

@@ -11,7 +11,9 @@ export interface Recipe {
   familia: string;
   nombre: string;
   ingredientes: Ingredient[];
-  instrucciones: string;
+  instrucciones: string; // Keep as fallback/combined
+  preparacion?: string;
+  emplatado?: string;
   descripcion?: string;
   rendimiento?: string;
   tiempoPreparacion?: string;
@@ -24,14 +26,15 @@ export interface Family {
   recipes: Recipe[];
 }
 
+export enum ViewMode {
+  FAMILIES = 'families',
+  RECIPES = 'recipes'
+}
+
+// Added GeminiEnhancement interface to resolve the module error in geminiService.ts
 export interface GeminiEnhancement {
   variacionGourmet: string;
   maridajeSugerido: string;
   tipPro: string;
   valorNutricional: string;
-}
-
-export enum ViewMode {
-  FAMILIES = 'families',
-  RECIPES = 'recipes'
 }
