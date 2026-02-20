@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Search, 
   ChefHat, 
@@ -11,7 +10,7 @@ import {
   RefreshCcw
 } from 'lucide-react';
 import { Recipe, Family } from './types';
-import { parseRecipesFromExcel } from './services/excelService';
+import { parseWorkbook } from './services/excelService';
 import RecipeCard from './components/RecipeCard';
 import RecipeModal from './components/RecipeModal';
 
@@ -22,7 +21,6 @@ const App: React.FC = () => {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const saved = localStorage.getItem('malanga_families');
@@ -35,13 +33,11 @@ const App: React.FC = () => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    event.target.value = '';
-
     setIsLoading(true);
     setError(null);
     try {
-      console.log("Archivo seleccionado:", file.name, file.size);
-      const parsedFamilies = await parseRecipesFromExcel(file);
+      const buffer = await file.arrayBuffer();
+      const parsedFamilies = await parseWorkbook(buffer);
       setFamilies(parsedFamilies);
       localStorage.setItem('malanga_families', JSON.stringify(parsedFamilies));
       setSelectedFamily(null);
@@ -82,14 +78,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-malanga-pink text-malanga-text">
-      <input 
-        type="file" 
-        accept=".xlsx,.xls" 
-        className="hidden" 
-        ref={fileInputRef}
-        onChange={handleFileUpload} 
-        style={{ display: "none" }}
-      />
       {/* Navbar Superior Malanga Style */}
       <header className="sticky top-0 z-40 bg-malanga-green text-malanga-white shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -123,13 +111,11 @@ const App: React.FC = () => {
             </div>
 
             <div className="flex items-center gap-4">
-              <button 
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                className="cursor-pointer bg-malanga-white text-malanga-green hover:bg-malanga-pinkSoft px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 shadow-md border border-malanga-green/10">
+              <label className="cursor-pointer bg-malanga-white text-malanga-green hover:bg-malanga-pinkSoft px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 shadow-md border border-malanga-green/10">
                 <FileSpreadsheet className="w-4 h-4" />
                 <span className="hidden sm:inline">Sincronizar Excel</span>
-              </button>
+                <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
+              </label>
             </div>
           </div>
         </div>
@@ -174,12 +160,10 @@ const App: React.FC = () => {
                 <p className="text-malanga-text/70 max-w-md mx-auto mb-10 text-lg leading-relaxed italic">
                   Carga la <strong>"Matriz de costos Malanga.xlsx"</strong> para explorar el corazón de nuestra cocina.
                 </p>
-                <button 
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="inline-flex cursor-pointer bg-malanga-green text-malanga-white hover:bg-malanga-greenDark px-10 py-4 rounded-full font-black uppercase tracking-widest transition-all shadow-xl active:scale-95">
+                <label className="inline-flex cursor-pointer bg-malanga-green text-malanga-white hover:bg-malanga-greenDark px-10 py-4 rounded-full font-black uppercase tracking-widest transition-all shadow-xl active:scale-95">
                   Importar Matriz
-                </button>
+                  <input type="file" accept=".xlsx,.xls" className="hidden" onChange={handleFileUpload} />
+                </label>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">

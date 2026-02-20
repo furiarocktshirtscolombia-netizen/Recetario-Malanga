@@ -101,9 +101,7 @@ const getColumnMapping = (headerRow: any[]) => {
   };
 };
 
-export const parseRecipesFromExcel = async (file: File): Promise<Family[]> => {
-  console.log("Leyendo excel...");
-  const buffer = await file.arrayBuffer();
+export const parseWorkbook = async (buffer: ArrayBuffer): Promise<Family[]> => {
   // Lectura segura mediante Uint8Array para evitar errores de codificación
   const workbook = XLSX.read(new Uint8Array(buffer), { type: 'array' });
   const families: Family[] = [];
